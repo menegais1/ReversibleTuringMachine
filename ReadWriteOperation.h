@@ -10,13 +10,13 @@
 
 class ReadWriteOperation : public QuadrupleOperation {
 public:
-    ReadWriteOperation(std::string read,std::string  write) {
+    ReadWriteOperation(std::string read, std::string write) {
         this->read = read;
         this->write = write;
     }
 
     bool execute(Tape &tape) override {
-        if (tape.tape[tape.head] == this->read){
+        if (tape.tape[tape.head] == this->read) {
             tape.tape[tape.head] = this->write;
             return true;
         }
@@ -26,6 +26,10 @@ public:
     bool canExecute(Tape tape) override {
         if (tape.tape[tape.head] == this->read) return true;
         return false;
+    }
+
+    QuadrupleOperation *reverse() override {
+        return new ReadWriteOperation(write, read);
     }
 };
 

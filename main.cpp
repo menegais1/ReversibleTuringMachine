@@ -164,6 +164,12 @@ public:
         return true;
     }
 
+    MultiTapeTransition reverse() {
+        return MultiTapeTransition(toState + "reverse", fromState + "reverse", inputTapeOperation->reverse(),
+                                   historyTapeOperation->reverse(),
+                                   outputTapeOperation->reverse());
+    }
+
     bool canExecute(Tape inputTape, Tape historyTape, Tape outputTape) {
         return inputTapeOperation->canExecute(inputTape) && historyTapeOperation->canExecute(historyTape) && outputTapeOperation->canExecute((outputTape));
     }
@@ -181,7 +187,6 @@ public:
     Tape inputTape;
     Tape historyTape;
     Tape outputTape;
-    std::vector<QuadrupleOperation *> operations;
     std::vector<MultiTapeTransition> transitions;
     std::vector<std::string> finalState;
     std::string initialState;
@@ -229,15 +234,43 @@ public:
         return "S1";
     }
 
+    std::string seekEnd(std::string curState) {
+        MultiTapeTransition seekEnd = MultiTapeTransition(curState, "E0",
+                                                          new ReadWriteOperation(BLANK, BLANK),
+                                                          new ShiftOperation(Shift::NONE),
+                                                          new ShiftOperation(Shift::NONE));
+        MultiTapeTransition seekEnd1 = MultiTapeTransition("E0", "E1",
+                                                           new ShiftOperation(Shift::RIGHT),
+                                                           new ShiftOperation(Shift::NONE),
+                                                           new ShiftOperation(Shift::NONE));
+
+        transitions.push_back(seekEnd);
+        transitions.push_back(seekEnd1);
+        for (int i = 0; i < tapeAlphabet.size(); i++) {
+            if (tapeAlphabet[i] != BLANK) {
+                MultiTapeTransition seekEnd2 = MultiTapeTransition("E1", "E0",
+                                                                   new ReadWriteOperation(tapeAlphabet[i], tapeAlphabet[i]),
+                                                                   new ShiftOperation(Shift::NONE),
+                                                                   new ShiftOperation(Shift::NONE));
+                transitions.push_back(seekEnd2);
+            }
+        }
+
+        return "E1";
+    }
+
+    std::string stateInverse(std::string state) {
+        return state + "reverse";
+    }
+
     void convertOrdinalTransitions(std::vector<OrdinalTransition> ordinalTransitions) {
+        std::vector<MultiTapeTransition> reversibleTransitions;
         for (int i = 0; i < ordinalTransitions.size(); ++i) {
             OrdinalTransition transition = ordinalTransitions[i];
-            std::string tempState = transition.nextState + "\'" + std::to_string(i);
+            std::string tempState = transition.nextState + std::to_string(i) + "\'";
 
             QuadrupleOperation *readWriteOperation = new ReadWriteOperation(transition.read, transition.write);
             QuadrupleOperation *shiftOperation = new ShiftOperation(transition.shift);
-            operations.push_back(readWriteOperation);
-            operations.push_back(shiftOperation);
 
             QuadrupleOperation *shiftHistoryOperation = new ShiftOperation(Shift::RIGHT);
             QuadrupleOperation *writeHistoryOperation = new ReadWriteOperation(BLANK, std::to_string((i * 2) + 1));
@@ -247,7 +280,8 @@ public:
 
             MultiTapeTransition transition1 = MultiTapeTransition(transition.curState, tempState, readWriteOperation, shiftHistoryOperation, outputOperation1);
             MultiTapeTransition transition2 = MultiTapeTransition(tempState, transition.nextState, shiftOperation, writeHistoryOperation, outputOperation2);
-
+            reversibleTransitions.push_back(transition1);
+            reversibleTransitions.push_back(transition2);
             transitions.push_back(transition1);
             transitions.push_back(transition2);
         }
@@ -302,6 +336,31 @@ public:
             }
         }
 
+
+        // Seek End on InputTape
+        // Invert all operations
+        // Link last copy operation to the final state inverse
+
+        endState = seekEnd("C1");
+
+        std::vector<MultiTapeTransition> revertedTransitions;
+        for (int i = 0; i < reversibleTransitions.size(); ++i) {
+            revertedTransitions.push_back(reversibleTransitions[i].reverse());
+        }
+
+        auto inverse = stateInverse(finalState[0]);
+
+        transitions.insert(transitions.end(), revertedTransitions.begin(), revertedTransitions.end());
+        transitions.push_back(MultiTapeTransition(endState, inverse, new ShiftOperation(Shift::NONE),
+                                                  new ShiftOperation(Shift::NONE),
+                                                  new ShiftOperation(Shift::NONE)));
+
+        transitions.push_back(MultiTapeTransition(stateInverse(initialState), "finalState",
+                              new ShiftOperation(Shift::LEFT),
+                              new ShiftOperation(Shift::LEFT),
+                              new ShiftOperation(Shift::LEFT)));
+        finalState.clear();
+        finalState.push_back("finalState");
     }
 
 
@@ -326,7 +385,12 @@ public:
         std::cout << "Executing Turing Machine" << std::endl;
         while (true) {
             auto possibleTransitions = getTransitionsFromCurrentState();
-            std::cout << "Current Head " << inputTape.tape[inputTape.head] << " " << inputTape.head << std::endl;
+            std::cout << "Input Tape Head " << inputTape.tape[inputTape.head] << " " << inputTape.head << std::endl;
+            std::cout << "History Tape Head " << historyTape.tape[historyTape.head] << " " << historyTape.head << std::endl;
+            std::cout << "Output Tape Head " << outputTape.tape[outputTape.head] << " " << outputTape.head << std::endl;
+            inputTape.printTape();
+            historyTape.printTape();
+            outputTape.printTape();
             bool found = false;
             for (int i = 0; i < possibleTransitions.size(); ++i) {
                 if (possibleTransitions[i].canExecute(inputTape, historyTape, outputTape)) {

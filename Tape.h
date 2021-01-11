@@ -15,16 +15,18 @@ public:
 
     Tape() {
         tape = std::vector<std::string>(1000);
-        for (int i = 0; i <tape.size() ; ++i) {
+        for (int i = 0; i < tape.size(); ++i) {
             tape[i] = BLANK;
         }
     }
 
     void printTape() {
+
         for (int i = 0; i < tape.size(); ++i) {
             if (tape[i] == BLANK) continue;
             std::cout << tape[i] << " ";
         }
+
         std::cout << std::endl;
 
     }

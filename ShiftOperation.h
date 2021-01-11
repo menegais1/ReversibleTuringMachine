@@ -37,6 +37,22 @@ public:
     bool canExecute(Tape tape) override {
         return true;
     }
+
+    QuadrupleOperation *reverse() override {
+        switch (shift) {
+            case Shift::NONE:
+                break;
+            case Shift::RIGHT:
+                return new ShiftOperation(Shift::LEFT);
+                break;
+            case Shift::LEFT:
+                return new ShiftOperation(Shift::RIGHT);
+                break;
+            default:
+                return nullptr;
+        }
+        return new ShiftOperation(Shift::NONE);
+    }
 };
 
 

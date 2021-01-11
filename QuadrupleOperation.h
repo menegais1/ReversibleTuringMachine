@@ -20,6 +20,8 @@ public:
     virtual bool execute(Tape &tape) = 0;
 
     virtual bool canExecute(Tape tape) = 0;
+
+    virtual QuadrupleOperation* reverse() = 0;
     std::string getOperation() {
         if (instanceof<ShiftOperation>(this)) return std::string(1, this->shift);
         else return this->write;
