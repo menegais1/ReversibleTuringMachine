@@ -25,17 +25,21 @@
 class OrdinalTransition {
 public:
     OrdinalTransition(std::string stringTransition, int id) : id(id) {
-
-        stringTransition.erase(remove(stringTransition.begin(), stringTransition.end(), '('), stringTransition.end());
-        stringTransition.erase(remove(stringTransition.begin(), stringTransition.end(), ')'), stringTransition.end());
-        std::replace(stringTransition.begin(), stringTransition.end(), '=', ',');
-        auto list = split(stringTransition, ',');
-
-        curState = list[0];
-        read = list[1];
-        nextState = list[2];
-        write = list[3];
-        shift = (Shift) list[4][0];
+        int curStateBegin = 1;
+        int curStateEnd = stringTransition.find_first_of(',', 1);
+        curState = stringTransition.substr(curStateBegin, curStateEnd - curStateBegin);
+        int readBegin = curStateEnd + 1;
+        int readEnd = stringTransition.find_first_of(')', readBegin);
+        read = stringTransition.substr(readBegin, readEnd - readBegin);
+        int nextStateBegin = stringTransition.find_first_of('(', readEnd) + 1;
+        int nextStateEnd = stringTransition.find_first_of(',', nextStateBegin);
+        nextState = stringTransition.substr(nextStateBegin, nextStateEnd - nextStateBegin);
+        int writeBegin = nextStateEnd + 1;
+        int writeEnd = stringTransition.find_first_of(',', writeBegin);
+        write = stringTransition.substr(writeBegin, writeEnd - writeBegin);
+        int shiftBegin = writeEnd + 1;
+        int shiftEnd = stringTransition.find_first_of(')', shiftBegin);
+        shift = (Shift) stringTransition.substr(shiftBegin, shiftEnd - shiftBegin)[0];
     }
 
     std::string curState;
@@ -267,7 +271,7 @@ public:
         std::vector<MultiTapeTransition> reversibleTransitions;
         for (int i = 0; i < ordinalTransitions.size(); ++i) {
             OrdinalTransition transition = ordinalTransitions[i];
-            std::string tempState = transition.nextState + std::to_string(i) + "\'";
+            std::string tempState = transition.nextState + "\'" + std::to_string(i);
 
             QuadrupleOperation *readWriteOperation = new ReadWriteOperation(transition.read, transition.write);
             QuadrupleOperation *shiftOperation = new ShiftOperation(transition.shift);
@@ -289,7 +293,7 @@ public:
 
 
         // Seek InputTapeStart
-        // Copy While Seek Start from InputTape to OutputTape
+        // Copy from InputTape to OutputTape
         // The InputTape Head is on the beggining of the word, as the OutputTape
 
         auto endState = seekBeginning(finalState[0]);
@@ -356,9 +360,9 @@ public:
                                                   new ShiftOperation(Shift::NONE)));
 
         transitions.push_back(MultiTapeTransition(stateInverse(initialState), "finalState",
-                              new ShiftOperation(Shift::LEFT),
-                              new ShiftOperation(Shift::LEFT),
-                              new ShiftOperation(Shift::LEFT)));
+                                                  new ShiftOperation(Shift::LEFT),
+                                                  new ShiftOperation(Shift::LEFT),
+                                                  new ShiftOperation(Shift::LEFT)));
         finalState.clear();
         finalState.push_back("finalState");
     }
