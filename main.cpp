@@ -25,21 +25,33 @@
 class OrdinalTransition {
 public:
     OrdinalTransition(std::string stringTransition, int id) : id(id) {
-        int curStateBegin = 1;
-        int curStateEnd = stringTransition.find_first_of(',', 1);
-        curState = stringTransition.substr(curStateBegin, curStateEnd - curStateBegin);
-        int readBegin = curStateEnd + 1;
-        int readEnd = stringTransition.find_first_of(')', readBegin);
-        read = stringTransition.substr(readBegin, readEnd - readBegin);
-        int nextStateBegin = stringTransition.find_first_of('(', readEnd) + 1;
-        int nextStateEnd = stringTransition.find_first_of(',', nextStateBegin);
-        nextState = stringTransition.substr(nextStateBegin, nextStateEnd - nextStateBegin);
-        int writeBegin = nextStateEnd + 1;
-        int writeEnd = stringTransition.find_first_of(',', writeBegin);
-        write = stringTransition.substr(writeBegin, writeEnd - writeBegin);
-        int shiftBegin = writeEnd + 1;
-        int shiftEnd = stringTransition.find_first_of(')', shiftBegin);
-        shift = (Shift) stringTransition.substr(shiftBegin, shiftEnd - shiftBegin)[0];
+
+        stringTransition.erase(remove(stringTransition.begin(), stringTransition.end(), '('), stringTransition.end());
+        stringTransition.erase(remove(stringTransition.begin(), stringTransition.end(), ')'), stringTransition.end());
+        std::replace(stringTransition.begin(), stringTransition.end(), '=', ',');
+        auto list = split(stringTransition, ',');
+
+        curState = list[0];
+        read = list[1];
+        nextState = list[2];
+        write = list[3];
+        shift = (Shift) list[4][0];
+
+//        int curStateBegin = 1;
+//        int curStateEnd = stringTransition.find_first_of(',', 1);
+//        curState = stringTransition.substr(curStateBegin, curStateEnd - curStateBegin);
+//        int readBegin = curStateEnd + 1;
+//        int readEnd = stringTransition.find_first_of(')', readBegin);
+//        read = stringTransition.substr(readBegin, readEnd - readBegin);
+//        int nextStateBegin = stringTransition.find_first_of('(', readEnd) + 1;
+//        int nextStateEnd = stringTransition.find_first_of(',', nextStateBegin);
+//        nextState = stringTransition.substr(nextStateBegin, nextStateEnd - nextStateBegin);
+//        int writeBegin = nextStateEnd + 1;
+//        int writeEnd = stringTransition.find_first_of(',', writeBegin);
+//        write = stringTransition.substr(writeBegin, writeEnd - writeBegin);
+//        int shiftBegin = writeEnd + 1;
+//        int shiftEnd = stringTransition.find_first_of(')', shiftBegin);
+//        shift = (Shift) stringTransition.substr(shiftBegin, shiftEnd - shiftBegin)[0];
     }
 
     std::string curState;
