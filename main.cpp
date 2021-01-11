@@ -64,6 +64,8 @@ public:
 
     std::vector<OrdinalTransition> transitions;
     std::vector<std::string> statesList;
+    std::vector<std::string> tapeAlphabetList;
+
     std::string input;
 
     OrdinalTuringMachine() {
@@ -130,12 +132,13 @@ public:
 
 private:
     std::vector<std::string> inputAlphabetList;
-    std::vector<std::string> tapeAlphabetList;
     std::vector<std::string> transitionsList;
 };
 
 class MultiTapeTransition {
 public:
+
+    MultiTapeTransition() {}
 
     MultiTapeTransition(const std::string &curState, const std::string &nextState, QuadrupleOperation *inputTapeOperation, QuadrupleOperation *historyTapeOperation,
                         QuadrupleOperation *outputTapeOperation) : fromState(curState), toState(nextState), inputTapeOperation(inputTapeOperation), historyTapeOperation(historyTapeOperation),
@@ -155,10 +158,14 @@ public:
     }
 
     bool execute(Tape &inputTape, Tape &historyTape, Tape &outputTape) {
-        if (!inputTapeOperation->execute(inputTape)) return false;
+        inputTapeOperation->execute(inputTape);
         historyTapeOperation->execute(historyTape);
         outputTapeOperation->execute(outputTape);
         return true;
+    }
+
+    bool canExecute(Tape inputTape, Tape historyTape, Tape outputTape) {
+        return inputTapeOperation->canExecute(inputTape) && historyTapeOperation->canExecute(historyTape) && outputTapeOperation->canExecute((outputTape));
     }
 
     std::string fromState;
@@ -179,9 +186,12 @@ public:
     std::vector<std::string> finalState;
     std::string initialState;
     std::string currentState;
+    std::vector<std::string> tapeAlphabet;
 
     ReversibleTuringMachineSimulator(const std::vector<std::string> &finalState, const std::string &initialState, std::string input,
-                                     std::vector<OrdinalTransition> ordinalTransitions) : finalState(finalState), initialState(initialState) {
+                                     std::vector<std::string> tapeAlphabet, std::vector<OrdinalTransition> ordinalTransitions) : finalState(finalState),
+                                                                                                                                 initialState(initialState),
+                                                                                                                                 tapeAlphabet(tapeAlphabet) {
         convertOrdinalTransitions(ordinalTransitions);
         for (int i = 0; i < transitions.size(); ++i) {
             transitions[i].toString();
@@ -194,10 +204,35 @@ public:
         currentState = initialState;
     }
 
+    std::string seekBeginning(std::string curState) {
+        MultiTapeTransition seekBeginning = MultiTapeTransition(curState, "S0",
+                                                                new ReadWriteOperation(BLANK, BLANK),
+                                                                new ShiftOperation(Shift::NONE),
+                                                                new ShiftOperation(Shift::NONE));
+        MultiTapeTransition seekBeginning1 = MultiTapeTransition("S0", "S1",
+                                                                 new ShiftOperation(Shift::LEFT),
+                                                                 new ShiftOperation(Shift::NONE),
+                                                                 new ShiftOperation(Shift::NONE));
+
+        transitions.push_back(seekBeginning);
+        transitions.push_back(seekBeginning1);
+        for (int i = 0; i < tapeAlphabet.size(); i++) {
+            if (tapeAlphabet[i] != BLANK) {
+                MultiTapeTransition seekBeginning2 = MultiTapeTransition("S1", "S0",
+                                                                         new ReadWriteOperation(tapeAlphabet[i], tapeAlphabet[i]),
+                                                                         new ShiftOperation(Shift::NONE),
+                                                                         new ShiftOperation(Shift::NONE));
+                transitions.push_back(seekBeginning2);
+            }
+        }
+
+        return "S1";
+    }
+
     void convertOrdinalTransitions(std::vector<OrdinalTransition> ordinalTransitions) {
         for (int i = 0; i < ordinalTransitions.size(); ++i) {
             OrdinalTransition transition = ordinalTransitions[i];
-            std::string tempState = transition.nextState + "\'" + std::to_string(i)[0];
+            std::string tempState = transition.nextState + "\'" + std::to_string(i);
 
             QuadrupleOperation *readWriteOperation = new ReadWriteOperation(transition.read, transition.write);
             QuadrupleOperation *shiftOperation = new ShiftOperation(transition.shift);
@@ -216,6 +251,57 @@ public:
             transitions.push_back(transition1);
             transitions.push_back(transition2);
         }
+
+
+
+        // Seek InputTapeStart
+        // Copy While Seek Start from InputTape to OutputTape
+        // The InputTape Head is on the beggining of the word, as the OutputTape
+
+        auto endState = seekBeginning(finalState[0]);
+
+        std::string firstState = "B" + std::to_string(1);
+        std::string firstStateL = firstState + "\'";
+        std::string secondState = "B" + std::to_string(2);
+        std::string secondStateL = secondState + "\'";
+
+        MultiTapeTransition AfB1L = MultiTapeTransition(endState, firstStateL, new ReadWriteOperation(BLANK, BLANK),
+                                                        new ShiftOperation(Shift::NONE),
+                                                        new ReadWriteOperation(BLANK, BLANK));
+
+        MultiTapeTransition B1LB1 = MultiTapeTransition(firstStateL, firstState, new ShiftOperation(Shift::RIGHT),
+                                                        new ShiftOperation(Shift::NONE),
+                                                        new ShiftOperation(Shift::RIGHT));
+        MultiTapeTransition B1B2L = MultiTapeTransition(firstState, secondStateL, new ReadWriteOperation(BLANK, BLANK),
+                                                        new ShiftOperation(Shift::NONE),
+                                                        new ReadWriteOperation(BLANK, BLANK));
+        MultiTapeTransition B2LB2 = MultiTapeTransition(secondStateL, secondState, new ShiftOperation(Shift::LEFT),
+                                                        new ShiftOperation(Shift::NONE),
+                                                        new ShiftOperation(Shift::LEFT));
+        MultiTapeTransition B2C1 = MultiTapeTransition(secondState, "C1", new ReadWriteOperation(BLANK, BLANK),
+                                                       new ShiftOperation(Shift::NONE),
+                                                       new ReadWriteOperation(BLANK, BLANK));
+        transitions.push_back(AfB1L);
+        transitions.push_back(B1LB1);
+        transitions.push_back(B1B2L);
+        transitions.push_back(B2LB2);
+        transitions.push_back(B2C1);
+        for (int i = 0; i < tapeAlphabet.size(); i++) {
+            if (tapeAlphabet[i] != BLANK) {
+
+                MultiTapeTransition t1 = MultiTapeTransition(firstState, firstStateL,
+                                                             new ReadWriteOperation(tapeAlphabet[i], tapeAlphabet[i]),
+                                                             new ShiftOperation(Shift::NONE),
+                                                             new ReadWriteOperation(BLANK, tapeAlphabet[i]));
+                MultiTapeTransition t2 = MultiTapeTransition(secondState, secondStateL,
+                                                             new ReadWriteOperation(tapeAlphabet[i], tapeAlphabet[i]),
+                                                             new ShiftOperation(Shift::NONE),
+                                                             new ReadWriteOperation(tapeAlphabet[i], tapeAlphabet[i]));
+                transitions.push_back(t1);
+                transitions.push_back(t2);
+            }
+        }
+
     }
 
 
@@ -243,7 +329,8 @@ public:
             std::cout << "Current Head " << inputTape.tape[inputTape.head] << " " << inputTape.head << std::endl;
             bool found = false;
             for (int i = 0; i < possibleTransitions.size(); ++i) {
-                if (possibleTransitions[i].execute(inputTape, historyTape, outputTape)) {
+                if (possibleTransitions[i].canExecute(inputTape, historyTape, outputTape)) {
+                    possibleTransitions[i].execute(inputTape, historyTape, outputTape);
                     currentState = possibleTransitions[i].toState;
                     possibleTransitions[i].toString();
                     found = true;
@@ -271,7 +358,7 @@ public:
 int main() {
     OrdinalTuringMachine OTM = OrdinalTuringMachine();
     OTM.transitions[0].toString();
-    ReversibleTuringMachineSimulator simulator = ReversibleTuringMachineSimulator({OTM.statesList[OTM.statesList.size() - 1]}, OTM.statesList[0], OTM.input, OTM.transitions);
+    ReversibleTuringMachineSimulator simulator = ReversibleTuringMachineSimulator({OTM.statesList[OTM.statesList.size() - 1]}, OTM.statesList[0], OTM.input, OTM.tapeAlphabetList, OTM.transitions);
     simulator.execute();
     simulator.inputTape.printTape();
     simulator.historyTape.printTape();

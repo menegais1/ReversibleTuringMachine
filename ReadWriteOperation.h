@@ -22,6 +22,11 @@ public:
         }
         return false;
     }
+
+    bool canExecute(Tape tape) override {
+        if (tape.tape[tape.head] == this->read) return true;
+        return false;
+    }
 };
 
 

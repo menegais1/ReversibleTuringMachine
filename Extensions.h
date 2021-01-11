@@ -21,7 +21,8 @@ enum Shift {
     NONE = 'N',
 };
 
-const std::string BLANK = "/";
+const std::string BLANK = "B";
+const std::string MOVEMENT_INDICATOR = "/";
 
 template<typename Base, typename T>
 inline bool instanceof(const T *ptr) {

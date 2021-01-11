@@ -14,6 +14,7 @@ public:
 
     ShiftOperation(Shift shift) {
         this->shift = shift;
+        this->read = MOVEMENT_INDICATOR;
     }
 
     bool execute(Tape &tape) override {
@@ -30,6 +31,10 @@ public:
                 return false;
         }
 
+        return true;
+    }
+
+    bool canExecute(Tape tape) override {
         return true;
     }
 };
